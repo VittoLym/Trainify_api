@@ -1,0 +1,881 @@
+openapi: 3.0.3
+info:
+  title: Fitness Tracker API
+  description: |
+    API para aplicación de seguimiento de entrenamientos.
+    Permite a usuarios registrarse, crear planes de entrenamiento y realizar seguimiento de progreso.
+  version: 1.0.0
+  contact:
+    name: Vitto
+    email: vitto.jsx@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000/api
+    description: Servidor de desarrollo
+  - url: https://localhost:5000/api
+    description: Servidor de producción
+
+tags:
+  - name: Authentication
+    description: Operaciones de autenticación y usuarios
+  - name: Exercises
+    description: Gestión de ejercicios disponibles
+  - name: Workouts
+    description: Gestión de entrenamientos
+  - name: Reports
+    description: Generación de reportes y estadísticas
+
+paths:
+  # ========== AUTHENTICATION ==========
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Registrar nuevo usuario
+      description: Crea una nueva cuenta de usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: "usuario@ejemplo.com"
+              username: "usuario123"
+              password: "Password123"
+              firstName: "Juan"
+              lastName: "Pérez"
+              dateOfBirth: "1990-01-01"
+              heightCm: 175.5
+              weightKg: 70.2
+              fitnessLevel: "beginner"
+      responses:
+        '201':
+          description: Usuario registrado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Error de validación o usuario ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Iniciar sesión
+      description: Autentica un usuario y devuelve tokens JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "usuario@ejemplo.com"
+              password: "Password123"
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Obtener perfil de usuario
+      description: Retorna la información del perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ========== EXERCISES ==========
+  /exercises:
+    get:
+      tags:
+        - Exercises
+      summary: Listar ejercicios
+      description: Retorna una lista paginada de ejercicios disponibles
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: category
+          in: query
+          description: Filtrar por categoría
+          schema:
+            type: string
+            enum: [strength, cardio, flexibility, balance, mobility]
+        - name: muscleGroup
+          in: query
+          description: Filtrar por grupo muscular
+          schema:
+            type: string
+            enum: [chest, back, legs, shoulders, arms, core, full_body]
+      responses:
+        '200':
+          description: Lista de ejercicios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Exercise'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  # ========== WORKOUTS ==========
+  /workouts:
+    post:
+      tags:
+        - Workouts
+      summary: Crear nuevo workout
+      description: Crea un nuevo entrenamiento para el usuario autenticado
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkoutRequest'
+            example:
+              name: "Entrenamiento de piernas"
+              description: "Rutina completa para piernas"
+              workoutType: "strength"
+              scheduledDate: "2024-01-15"
+              scheduledTime: "18:30"
+              exercises:
+                - exerciseId: "550e8400-e29b-41d4-a716-446655440000"
+                  sets: 4
+                  reps: 12
+                  weight: 60.5
+                  restTimeSeconds: 90
+                  notes: "Mantener la espalda recta"
+                - exerciseId: "550e8400-e29b-41d4-a716-446655440001"
+                  sets: 3
+                  reps: 15
+                  weight: 40.0
+                  restTimeSeconds: 60
+      responses:
+        '201':
+          description: Workout creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workout'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Workouts
+      summary: Listar workouts del usuario
+      description: Retorna los workouts del usuario autenticado
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: status
+          in: query
+          description: Filtrar por estado
+          schema:
+            type: string
+            enum: [scheduled, in_progress, completed, cancelled, skipped]
+        - name: startDate
+          in: query
+          description: Fecha de inicio para filtrar
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Fecha de fin para filtrar
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Lista de workouts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Workout'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /workouts/{id}:
+    get:
+      tags:
+        - Workouts
+      summary: Obtener workout por ID
+      description: Retorna un workout específico del usuario autenticado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del workout
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Workout encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workout'
+        '404':
+          description: Workout no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Workouts
+      summary: Actualizar workout
+      description: Actualiza un workout existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del workout
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkoutRequest'
+      responses:
+        '200':
+          description: Workout actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workout'
+        '404':
+          description: Workout no encontrado
+
+    delete:
+      tags:
+        - Workouts
+      summary: Eliminar workout
+      description: Elimina un workout del usuario autenticado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del workout
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Workout eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Workout deleted successfully"
+        '404':
+          description: Workout no encontrado
+
+  # ========== REPORTS ==========
+  /reports/progress:
+    get:
+      tags:
+        - Reports
+      summary: Generar reporte de progreso
+      description: Genera un reporte del progreso del usuario en un período
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          description: Fecha de inicio del reporte
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          description: Fecha de fin del reporte
+          schema:
+            type: string
+            format: date
+        - name: reportType
+          in: query
+          description: Tipo de reporte
+          schema:
+            type: string
+            enum: [progress, volume, frequency, completion, performance]
+            default: progress
+      responses:
+        '200':
+          description: Reporte generado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressReport'
+
+# ========== COMPONENTS ==========
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Ingresa el token JWT en el formato: `Bearer {token}`
+        Ejemplo: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+
+  parameters:
+    page:
+      name: page
+      in: query
+      description: Número de página
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    limit:
+      name: limit
+      in: query
+      description: Cantidad de items por página
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  schemas:
+    # ===== AUTHENTICATION =====
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - username
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: usuario@ejemplo.com
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          example: usuario123
+        password:
+          type: string
+          minLength: 8
+          pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$"
+          example: Password123
+        firstName:
+          type: string
+          maxLength: 50
+          example: Juan
+        lastName:
+          type: string
+          maxLength: 50
+          example: Pérez
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1990-01-01"
+        heightCm:
+          type: number
+          minimum: 50
+          maximum: 250
+          example: 175.5
+        weightKg:
+          type: number
+          minimum: 20
+          maximum: 300
+          example: 70.2
+        fitnessLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          default: beginner
+          example: beginner
+
+    LoginRequest:
+      type: object
+      required:
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: usuario@ejemplo.com
+        username:
+          type: string
+          example: usuario123
+        password:
+          type: string
+          example: Password123
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            tokens:
+              $ref: '#/components/schemas/AuthTokens'
+        message:
+          type: string
+          example: "Login successful"
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          example: usuario@ejemplo.com
+        username:
+          type: string
+          example: usuario123
+        firstName:
+          type: string
+          example: Juan
+        lastName:
+          type: string
+          example: Pérez
+        fitnessLevel:
+          type: string
+          example: beginner
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T10:30:00Z"
+
+    UserProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            dateOfBirth:
+              type: string
+              format: date
+            heightCm:
+              type: number
+            weightKg:
+              type: number
+            lastLogin:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    AuthTokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expiresIn:
+          type: string
+          example: "15m"
+
+    # ===== EXERCISES =====
+    Exercise:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Press de Banca"
+        description:
+          type: string
+          example: "Acostado en un banco, baja la barra al pecho y empuja hacia arriba"
+        category:
+          type: string
+          enum: [strength, cardio, flexibility, balance, mobility]
+          example: strength
+        muscleGroup:
+          type: string
+          enum: [chest, back, legs, shoulders, arms, core, full_body]
+          example: chest
+        difficultyLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          example: intermediate
+        equipmentNeeded:
+          type: string
+          example: "barbell, bench"
+        metValue:
+          type: number
+          example: 3.8
+        averageCaloriesBurned:
+          type: number
+          example: 120.5
+        videoUrl:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+
+    # ===== WORKOUTS =====
+    CreateWorkoutRequest:
+      type: object
+      required:
+        - name
+        - scheduledDate
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          example: "Entrenamiento de piernas"
+        description:
+          type: string
+          maxLength: 500
+        workoutType:
+          type: string
+          enum: [strength, cardio, hiit, flexibility, custom]
+          default: strength
+        scheduledDate:
+          type: string
+          format: date
+          example: "2024-01-15"
+        scheduledTime:
+          type: string
+          pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+          example: "18:30"
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 480
+          example: 60
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutExerciseInput'
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["legs", "heavy", "monday"]
+
+    UpdateWorkoutRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        status:
+          type: string
+          enum: [scheduled, in_progress, completed, cancelled, skipped]
+        comments:
+          type: string
+          maxLength: 500
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        perceivedEffort:
+          type: integer
+          minimum: 1
+          maximum: 10
+        completedAt:
+          type: string
+          format: date-time
+
+    Workout:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        workoutType:
+          type: string
+        scheduledDate:
+          type: string
+          format: date
+        scheduledTime:
+          type: string
+        status:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        comments:
+          type: string
+        rating:
+          type: integer
+        perceivedEffort:
+          type: integer
+        durationMinutes:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutExercise'
+
+    WorkoutExerciseInput:
+      type: object
+      required:
+        - exerciseId
+      properties:
+        exerciseId:
+          type: string
+          format: uuid
+        sets:
+          type: integer
+          minimum: 1
+          default: 3
+        reps:
+          type: integer
+          minimum: 1
+          default: 10
+        weight:
+          type: number
+          minimum: 0
+        distanceKm:
+          type: number
+          minimum: 0
+        durationMinutes:
+          type: number
+          minimum: 0
+        restTimeSeconds:
+          type: integer
+          minimum: 0
+          default: 60
+        orderIndex:
+          type: integer
+          minimum: 0
+          default: 0
+        notes:
+          type: string
+          maxLength: 200
+
+    WorkoutExercise:
+      allOf:
+        - $ref: '#/components/schemas/WorkoutExerciseInput'
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            exercise:
+              $ref: '#/components/schemas/Exercise'
+            completedSets:
+              type: integer
+            completedReps:
+              type: array
+              items:
+                type: integer
+            completedWeights:
+              type: array
+              items:
+                type: number
+
+    # ===== REPORTS =====
+    ProgressReport:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            period:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+            summary:
+              type: object
+              properties:
+                totalWorkouts:
+                  type: integer
+                completedWorkouts:
+                  type: integer
+                completionRate:
+                  type: number
+                  format: percentage
+                totalVolume:
+                  type: number
+                averageRating:
+                  type: number
+            weeklyProgress:
+              type: array
+              items:
+                type: object
+                properties:
+                  weekStart:
+                    type: string
+                    format: date
+                  weekEnd:
+                    type: string
+                    format: date
+                  workoutsCompleted:
+                    type: integer
+                  totalVolume:
+                    type: number
+            topExercises:
+              type: array
+              items:
+                type: object
+                properties:
+                  exerciseId:
+                    type: string
+                    format: uuid
+                  exerciseName:
+                    type: string
+                  totalSets:
+                    type: integer
+                  totalReps:
+                    type: integer
+                  maxWeight:
+                    type: number
+
+    # ===== COMMON =====
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error message"
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+        timestamp:
+          type: string
+          format: date-time

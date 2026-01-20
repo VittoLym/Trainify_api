@@ -3,9 +3,11 @@ const db = require('../utils/database');
 class BaseModel {
   constructor(tableName) {
     this.tableName = tableName;
+    this.db = db;
   }
 
   async findById(id) {
+    console.log(this.tableName)
     const result = await db.query(
       `SELECT * FROM ${this.tableName} WHERE id = $1`,
       [id]

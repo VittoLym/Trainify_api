@@ -1,4 +1,5 @@
 const UserModel = require('../models/user.model');
+const RefreshToken = require('../models/refreshToken.model')
 const JWTUtils = require('../utils/jwt');
 const db = require('../utils/database');
 const bcrypt = require('bcrypt');
@@ -20,6 +21,8 @@ class AuthService {
       const user = await UserModel.create(userData);
       // Generar tokens
       const tokens = this.generateTokens(user);
+      await RefreshToken.createToken(user.id, tokens.refreshToken);
+      UserModel.updateLastLogin(user.id)
       return {
         user: {
           id: user.id,
@@ -59,6 +62,8 @@ class AuthService {
       }
       // Actualizar último login
       await UserModel.updateLastLogin(user.id);
+      // Guarda refrersh token en DB
+      await RefreshToken.createToken(user.id, tokens.refreshToken);
       // Generar tokens
       const tokens = this.generateTokens(user);
       return {
@@ -84,17 +89,25 @@ class AuthService {
         throw new Error('Refresh token required');
       }
       // Verificar refresh token
+      const tokenRecord = await RefreshToken.findValidToken(refreshToken);
+      if (!tokenRecord) {
+        throw new Error('Invalid or expired refresh token');
+      }
       const decoded = JWTUtils.verifyRefreshToken(refreshToken);
       if (!decoded) {
+        await RefreshToken.revokeToken(refreshToken);
         throw new Error('Invalid refresh token');
       }
-      // Buscar usuario
-      const user = await UserModel.findById(decoded.id);
+      const user = await User.findById(decoded.id);
       if (!user) {
+        await RefreshToken.revokeToken(refreshToken);
         throw new Error('User not found');
       }
       // Generar nuevos tokens
       const tokens = this.generateTokens(user);
+      await RefreshToken.revokeToken(refreshToken);
+      // Guardar nuevo refresh token
+      await RefreshToken.createToken(user.id, tokens.refreshToken);
       return {
         user: {
           id: user.id,
@@ -108,14 +121,13 @@ class AuthService {
       throw error;
     }
   }
-  async logout(userId) {
-    try {
-      console.log(`User ${userId} logged out`);
-      return true;
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+  async logout(userId, refreshToken) {
+    if (refreshToken) {
+      await RefreshToken.revokeToken(refreshToken);
+    } else {
+      await RefreshToken.revokeAllUserTokens(userId);
     }
+    return true;
   }
   async getProfile(userId) {
     try {

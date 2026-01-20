@@ -26,10 +26,6 @@ class JWTUtils {
       return null;
     }
   }
-
-  /**
-   * Verifica un refresh token
-   */
   static verifyRefreshToken(token) {
     try {
       return jwt.verify(token, JWT_CONFIG.refreshSecret);
@@ -37,10 +33,6 @@ class JWTUtils {
       return null;
     }
   }
-
-  /**
-   * Decodifica un token sin verificar
-   */
   static decodeToken(token) {
     return jwt.decode(token);
   }

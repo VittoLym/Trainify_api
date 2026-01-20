@@ -2,9 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+const path = require('path');
 const authRoutes = require('./routes/auth.route');
+const exerciseRoutes = require('./routes/exercise.route');
+// const workoutRoutes = require('./routes/workout.routes');
+// const reportRoutes = require('./routes/report.routes');
 require('dotenv').config();
 const app = express();
+const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Configuración de middleware
 app.use(helmet());
@@ -17,7 +25,6 @@ app.use(cors({
 app.use(morgan('dev'));
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
-
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -26,9 +33,11 @@ app.get('/health', (req, res) => {
     version: '0.2.0'
   });
 });
-
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/exercises', exerciseRoutes);
+// app.use('/api/workouts', workoutRoutes);
+// app.use('/api/reports', reportRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {
@@ -66,14 +75,14 @@ app.use((err, req, res, next) => {
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
-
 // Configurar puerto
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5000'}`);
+  console.log(`📊 Database: ${process.env.DB_NAME}`);
+  console.log(`🔗 API Base: http://localhost:${PORT}/api`);
 });
 
 module.exports = app;

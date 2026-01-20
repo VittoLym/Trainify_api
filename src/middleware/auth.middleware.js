@@ -1,6 +1,7 @@
 const JWTUtils = require('../utils/jwt');
+const User = require('../models/user.model')
 
-const authenticate = (req, res, next) => {
+const authenticate = async(req, res, next) => {
   try {
     // Obtener token del header
     const authHeader = req.headers.authorization;
@@ -19,6 +20,14 @@ const authenticate = (req, res, next) => {
         success: false,
         message: 'Invalid or expired token',
         code: 'INVALID_TOKEN'
+      });
+    }
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found',
+        code: 'USER_NOT_FOUND'
       });
     }
     // Agregar usuario al request
