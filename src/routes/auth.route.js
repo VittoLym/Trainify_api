@@ -34,5 +34,10 @@ router.put('/profile',
   validate('updateProfile'),
   authController.updateProfile
 );
+router.post('/change-password',
+  authenticate,
+  validate('changePassword'),
+  authController.changePassword
+);
 
 module.exports = router;

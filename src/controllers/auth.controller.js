@@ -97,6 +97,35 @@ class AuthController {
       });
     }
   }
+   async changePassword(req, res) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      // Verificar contraseña actual
+      const user = await authService.verifyCurrentPassword(req.userId, currentPassword);
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Current password is incorrect',
+          code: 'INVALID_CURRENT_PASSWORD'
+        });
+      }
+
+      // Actualizar contraseña
+      await authService.updatePassword(req.userId, newPassword);
+      
+      res.json({
+        success: true,
+        message: 'Password updated successfully'
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+        code: 'PASSWORD_UPDATE_ERROR'
+      });
+    }
+  }
 }
 
 module.exports = new AuthController();

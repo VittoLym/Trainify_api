@@ -1,6 +1,7 @@
 const UserModel = require('../models/user.model');
 const JWTUtils = require('../utils/jwt');
 const db = require('../utils/database');
+const bcrypt = require('bcrypt');
 
 class AuthService {
   async register(userData) {
@@ -166,6 +167,33 @@ class AuthService {
     } catch (error) {
       console.error('Update profile error:', error);
       throw error;
+    }
+  }
+  async verifyCurrentPassword(userId, currentPassword) {
+    try {
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const isValid = await UserModel.verifyPassword(currentPassword, user.password_hash);
+      return isValid ? user : null;
+    } catch (error) {
+      console.error('Verify current password error:', error);
+      throw error;
+    }
+  }
+  async updatePassword(userId, newPassword) {
+    try {
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      
+      const query = 'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2';
+      await db.query(query, [hashedPassword, userId]);
+      
+      return true;
+    } catch (error) {
+      console.error('Update password error:', error);
+      throw new Error('Failed to update password');
     }
   }
   generateTokens(user) {
