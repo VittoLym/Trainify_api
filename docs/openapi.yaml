@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Fitness Tracker API
+  title: Trainify API
   description: |
     API para aplicación de seguimiento de entrenamientos.
     Permite a usuarios registrarse, crear planes de entrenamiento y realizar seguimiento de progreso.
