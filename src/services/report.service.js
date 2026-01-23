@@ -1,4 +1,4 @@
-const db = require('../untils/database');
+const db = require('../utils/database');
 
 class ReportService {
   async generateProgressReport(userId, startDate, endDate, groupBy = 'week') {

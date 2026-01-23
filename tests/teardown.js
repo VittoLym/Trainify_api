@@ -5,7 +5,7 @@ module.exports = async () => {
   
   // Cerrar conexiones a DB si es necesario
   try {
-    const db = require('../src/config/database');
+    const db = require('../src/utils/database');
     if (db.pool && typeof db.pool.end === 'function') {
       await db.pool.end();
     }

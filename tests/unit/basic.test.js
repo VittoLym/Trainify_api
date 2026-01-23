@@ -21,8 +21,8 @@ describe('Basic Test Setup', () => {
 
   // Test 4: Verificar más variables
   test('JWT secrets should be defined', () => {
-    expect(process.env.JWT_ACCESS_SECRET).toBeDefined();
+    expect(process.env.JWT_SECRET).toBeDefined();
     expect(process.env.JWT_REFRESH_SECRET).toBeDefined();
-    expect(process.env.JWT_ACCESS_SECRET.length).toBeGreaterThan(10);
+    expect(process.env.JWT_SECRET.length).toBeGreaterThan(10);
   });
 });

@@ -5,10 +5,10 @@ const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const path = require('path');
-const authRoutes = require('./routes/auth.route');
-const exerciseRoutes = require('./routes/exercise.route');
-// const workoutRoutes = require('./routes/workout.routes');
-// const reportRoutes = require('./routes/report.routes');
+const authRoutes = require('./routes/auth.routes');
+const exerciseRoutes = require('./routes/exercise.routes');
+const workoutRoutes = require('./routes/workout.routes');
+const reportRoutes = require('./routes/report.routes');
 require('dotenv').config();
 const app = express();
 const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));
@@ -36,8 +36,8 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/exercises', exerciseRoutes);
-// app.use('/api/workouts', workoutRoutes);
-// app.use('/api/reports', reportRoutes);
+app.use('/api/workouts', workoutRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {
