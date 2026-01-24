@@ -60,10 +60,6 @@ function buildProgressReportQuery(groupBy) {
 class ReportService {
   async generateProgressReport(userId, startDate, endDate, groupBy = 'week') {
     const query = buildProgressReportQuery(groupBy);
-    
-    console.log('Query ejecutado:', query);
-    console.log('Parámetros:', [userId, startDate, endDate]);
-
     const result = await db.query(query, [userId, startDate, endDate]);
     return result.rows;
 }

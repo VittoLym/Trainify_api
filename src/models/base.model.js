@@ -7,7 +7,6 @@ class BaseModel {
   }
 
   async findById(id) {
-    console.log(this.tableName)
     const result = await db.query(
       `SELECT * FROM ${this.tableName} WHERE id = $1`,
       [id]
