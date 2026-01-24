@@ -1,7 +1,5 @@
 const db = require('../utils/database');
-
-class ReportService {
-  async generateProgressReport(userId, startDate, endDate, groupBy = 'week') {
+function buildProgressReportQuery(groupBy) {
     let groupByClause;
     switch (groupBy) {
       case 'day':
@@ -17,33 +15,58 @@ class ReportService {
         groupByClause = "DATE_TRUNC('week', w.scheduled_date)";
     }
 
-    const query = `
-      SELECT 
-        ${groupByClause} as period,
-        COUNT(DISTINCT w.id) as workout_count,
-        COUNT(DISTINCT CASE WHEN w.status = 'completed' THEN w.id END) as completed_count,
-        AVG(w.rating) as average_rating,
-        SUM(w.duration_minutes) as total_duration,
-        COUNT(DISTINCT we.exercise_id) as unique_exercises,
-        SUM(we.sets * we.reps * COALESCE(we.weight, 1)) as total_volume,
-        ${groupBy === 'exercise' ? `
-          e.name as exercise_name,
-          e.category as exercise_category,
-          e.muscle_group as exercise_muscle_group
-        ` : ''}
-      FROM workouts w
-      LEFT JOIN workout_exercises we ON w.id = we.workout_id
-      ${groupBy === 'exercise' ? 'LEFT JOIN exercises e ON we.exercise_id = e.id' : ''}
-      WHERE w.user_id = $1
-        AND w.scheduled_date BETWEEN $2 AND $3
-      GROUP BY ${groupByClause} ${groupBy === 'exercise' ? ', e.name, e.category, e.muscle_group' : ''}
-      ORDER BY period DESC
-    `;
+    const fields = [
+        `${groupByClause} as period`,
+        'COUNT(DISTINCT w.id) as workout_count',
+        'COUNT(DISTINCT CASE WHEN w.status = \'completed\' THEN w.id END) as completed_count',
+        'AVG(w.rating) as average_rating',
+        `SUM(
+          CASE 
+            WHEN w.start_time IS NOT NULL AND w.end_time IS NOT NULL 
+            THEN EXTRACT(EPOCH FROM (w.end_time - w.start_time)) / 60
+            ELSE COALESCE(w.duration_minutes, 0)
+          END
+        ) as total_duration`,
+        'COUNT(DISTINCT we.exercise_id) as unique_exercises',
+        'SUM(we.sets * we.reps * COALESCE(we.weight, 1)) as total_volume'
+    ];
+
+    if (groupBy === 'exercise') {
+        fields.push('e.name as exercise_name');
+        fields.push('e.category as exercise_category');
+        fields.push('e.muscle_group as exercise_muscle_group');
+    }
+
+    let query = `SELECT ${fields.join(',\n        ')}\n`;
+    query += `FROM workouts w\n`;
+    query += `LEFT JOIN workout_exercises we ON w.id = we.workout_id\n`;
+    
+    if (groupBy === 'exercise') {
+        query += `LEFT JOIN exercises e ON we.exercise_id = e.id\n`;
+    }
+    
+    query += `WHERE w.user_id = $1\n`;
+    query += `  AND w.scheduled_date BETWEEN $2 AND $3\n`;
+    query += `GROUP BY ${groupByClause}`;
+    
+    if (groupBy === 'exercise') {
+        query += ', e.name, e.category, e.muscle_group';
+    }
+    
+    query += `\nORDER BY period DESC`;
+    
+    return query;
+}
+class ReportService {
+  async generateProgressReport(userId, startDate, endDate, groupBy = 'week') {
+    const query = buildProgressReportQuery(groupBy);
+    
+    console.log('Query ejecutado:', query);
+    console.log('Parámetros:', [userId, startDate, endDate]);
 
     const result = await db.query(query, [userId, startDate, endDate]);
-
     return result.rows;
-  }
+}
 
   async generateVolumeReport(userId, startDate, endDate) {
     const query = `

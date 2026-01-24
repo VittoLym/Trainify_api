@@ -13,7 +13,6 @@ class WorkoutService {
         }
       }
     }
-
     const workout = {
       user_id: userId,
       name: workoutData.name,

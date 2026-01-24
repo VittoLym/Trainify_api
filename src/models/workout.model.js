@@ -14,10 +14,10 @@ class Workout extends BaseModel {
 
       // 1. Crear el workout
       const workout = await this.create(workoutData);
-
       // 2. Insertar ejercicios si existen
       if (exercises.length > 0) {
         for (const exercise of exercises) {
+          console.log(exercise)
           await client.query(
             `INSERT INTO workout_exercises (
               workout_id, exercise_id, sets, reps, weight,

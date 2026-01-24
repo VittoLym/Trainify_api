@@ -4,7 +4,6 @@ class ReportController {
   async generateProgressReport(req, res) {
     try {
       const { startDate, endDate, reportType, groupBy, exerciseId } = req.query;
-
       let report;
       switch (reportType) {
         case 'volume':
