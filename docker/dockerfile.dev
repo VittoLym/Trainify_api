@@ -2,19 +2,28 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Instalar dependencias
-COPY package*.json ./
-RUN npm ci --only=production
+# Instalar herramientas útiles para desarrollo
+RUN apk add --no-cache \
+    curl \
+    bash \
+    postgresql-client \
+    git \
+    && npm install -g nodemon
 
-# Copiar código
+# Copiar package files primero (para cache de capas)
+COPY package*.json ./
+
+# Instalar dependencias
+RUN npm ci
+
+# Copiar código fuente
 COPY . .
 
-# Variables de entorno
-ENV NODE_ENV=production
-ENV PORT=3000
+# Crear volumen para node_modules
+VOLUME ["/app/node_modules"]
 
 # Exponer puerto
-EXPOSE 3000
+EXPOSE 5000
 
-# Comando de inicio
-CMD ["node", "src/app.js"]
+# Comando de desarrollo
+CMD ["npm", "run", "dev"]

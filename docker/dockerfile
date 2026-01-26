@@ -1,20 +1,57 @@
+# ========== BUILD STAGE ==========
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copiar package files
+COPY package*.json ./
+
+# Instalar dependencias de producción y desarrollo
+RUN npm ci --only=production
+RUN cp -R node_modules prod_node_modules
+RUN npm ci
+
+# Copiar código fuente
+COPY . .
+
+# Ejecutar tests en build (opcional)
+RUN npm test -- --passWithNoTests
+
+# ========== PRODUCTION STAGE ==========
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Instalar dependencias
-COPY package*.json ./
-RUN npm ci --only=production
+# Instalar solo runtime necesario
+RUN apk add --no-cache curl
 
-# Copiar código
-COPY . .
+# Crear usuario no-root para seguridad
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
 
-# Variables de entorno
-ENV NODE_ENV=production
-ENV PORT=5000
+# Copiar dependencias de producción
+COPY --from=builder /app/prod_node_modules ./node_modules
+
+# Copiar aplicación
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/src/scripts ./scripts
+COPY --from=builder /app/package.json ./
+
+# Copiar archivos necesarios
+COPY --from=builder /app/.env.example ./.env.example
+COPY --from=builder /app/.env.production ./.env.production
+
+# Cambiar ownership a usuario no-root
+RUN chown -R nodejs:nodejs /app
+
+USER nodejs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-5000}/health || exit 1
 
 # Exponer puerto
-EXPOSE 3000
+EXPOSE 5000
 
 # Comando de inicio
 CMD ["node", "src/app.js"]

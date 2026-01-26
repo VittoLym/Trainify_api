@@ -1,4 +1,7 @@
 .env
 .env.test
+.env.docker
+docker-compose.prod.yml
+docker-compose.test.yml
 docker-compose.yml
 node_modules
